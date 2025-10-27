@@ -72,6 +72,9 @@ is($frame->{headers}->{':status'}, 200, 'limit_conn first stream');
 my $sid2 = $s->new_stream({ path => '/t.html' });
 $frames = $s->read(all => [{ sid => $sid2, length => 1 }]);
 
+my $s = Test::Nginx::HTTP2->new();
+$s->h2_settings(0, 0x4 => 1);
+
 ($frame) = grep { $_->{type} eq "HEADERS" && $_->{sid} == $sid2 } @$frames;
 is($frame->{headers}->{':status'}, 503, 'limit_conn rejected');
 

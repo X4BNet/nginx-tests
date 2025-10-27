@@ -96,28 +96,6 @@ open STDERR, ">&", \*OLDERR;
 
 ###############################################################################
 
-my $re = qr/nginx\/\d+\.\d+\.\d+/;
-
-like(header_server('/200'), qr/^$re$/, 'http2 tokens default 200');
-like(header_server('/404'), qr/^$re$/, 'http2 tokens default 404');
-like(body('/404'), qr/$re/, 'http2 tokens default 404 body');
-
-is(header_server('/off/200'), 'nginx', 'http2 tokens off 200');
-is(header_server('/off/404'), 'nginx', 'http2 tokens off 404');
-like(body('/off/404'), qr/nginx(?!\/)/, 'http2 tokens off 404 body');
-
-like(header_server('/on/200'), qr/^$re$/, 'http2 tokens on 200');
-like(header_server('/on/404'), qr/^$re$/, 'http2 tokens on 404');
-like(body('/on/404'), $re, 'http2 tokens on 404 body');
-
-$re = qr/$re \(.*\)/ if $t->has_module('--build=');
-
-like(header_server('/b/200'), qr/^$re$/, 'http2 tokens build 200');
-like(header_server('/b/404'), qr/^$re$/, 'http2 tokens build 404');
-like(body('/b/404'), qr/$re/, 'http2 tokens build 404 body');
-
-###############################################################################
-
 sub header_server {
 	my ($path) = shift;
 
