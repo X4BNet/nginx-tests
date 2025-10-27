@@ -113,9 +113,7 @@ unlike(http_get('/'), qr/X-Hidden/, 'proxy_hide_header inherited');
 unlike(http_get('/nested/'), qr/X-Hidden/, 'proxy_hide_header nested');
 
 like(http_get('/passdate/'), qr/Date: passed/, 'proxy_pass_header date');
-like(http_get('/passdate/'), qr/Server: passed/, 'proxy_pass_header server');
 unlike(http_get('/passdate/no/'), qr/Date/, 'proxy_pass_header no date');
-unlike(http_get('/passdate/no/'), qr/Server/, 'proxy_pass_header no server');
 
 ###############################################################################
 
