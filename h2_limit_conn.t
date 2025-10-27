@@ -69,14 +69,22 @@ my $frames = $s->read(all => [{ sid => $sid, length => 1 }]);
 my ($frame) = grep { $_->{type} eq "HEADERS" && $_->{sid} == $sid } @$frames;
 is($frame->{headers}->{':status'}, 200, 'limit_conn first stream');
 
+# Test second stream on same connection - should be allowed with connection-level limiting
 my $sid2 = $s->new_stream({ path => '/t.html' });
 $frames = $s->read(all => [{ sid => $sid2, length => 1 }]);
 
-my $s = Test::Nginx::HTTP2->new();
-$s->h2_settings(0, 0x4 => 1);
-
 ($frame) = grep { $_->{type} eq "HEADERS" && $_->{sid} == $sid2 } @$frames;
-is($frame->{headers}->{':status'}, 503, 'limit_conn rejected');
+is($frame->{headers}->{':status'}, 200, 'limit_conn second stream on same connection');
+
+# Test new connection - should be rejected due to connection-level limiting
+my $s2 = Test::Nginx::HTTP2->new();
+$s2->h2_settings(0, 0x4 => 1);
+
+my $sid3 = $s2->new_stream({ path => '/t.html' });
+$frames = $s2->read(all => [{ sid => $sid3, length => 1 }]);
+
+($frame) = grep { $_->{type} eq "HEADERS" && $_->{sid} == $sid3 } @$frames;
+is($frame->{headers}->{':status'}, 503, 'limit_conn rejected new connection');
 
 $s->h2_settings(0, 0x4 => 2**16);
 
@@ -85,7 +93,14 @@ $s->read(all => [
 	{ sid => $sid2, fin => 1 }
 ]);
 
+$s2->h2_settings(0, 0x4 => 2**16);
+
+$s2->read(all => [
+	{ sid => $sid3, fin => 1 }
+]);
+
 # limit_conn + client's RST_STREAM
+# With connection-level limiting, RST_STREAM doesn't affect the connection limit
 
 $s = Test::Nginx::HTTP2->new();
 $s->h2_settings(0, 0x4 => 1);
@@ -97,10 +112,11 @@ $s->h2_rst($sid, 5);
 ($frame) = grep { $_->{type} eq "HEADERS" && $_->{sid} == $sid } @$frames;
 is($frame->{headers}->{':status'}, 200, 'RST_STREAM 1');
 
+# Second stream on same connection should still be allowed
 $sid2 = $s->new_stream({ path => '/t.html' });
 $frames = $s->read(all => [{ sid => $sid2, length => 1 }]);
 
 ($frame) = grep { $_->{type} eq "HEADERS" && $_->{sid} == $sid2 } @$frames;
-is($frame->{headers}->{':status'}, 200, 'RST_STREAM 2');
+is($frame->{headers}->{':status'}, 200, 'RST_STREAM 2 - same connection');
 
 ###############################################################################
